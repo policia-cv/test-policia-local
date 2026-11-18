@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Policía Local CV</title>
+<style>
+  :root{
+    --bg:#f4f2ee; --card:#fff; --ink:#1d2430; --muted:#626b78; --line:#dcd8d0;
+    --navy:#1f3a5f; --navy2:#2c5282; --ok:#1e7d4f; --okbg:#e6f4ec; --ko:#b3261e; --kobg:#fbeaea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+  header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  header h1{font-size:1.05rem;margin:0;font-weight:650;letter-spacing:.01em}
+  header button{background:transparent;border:1px solid #ffffff66;color:#fff;border-radius:6px;padding:6px 12px;cursor:pointer;font:inherit;font-size:.85rem}
+  main{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:14px}
+  .btn{display:inline-block;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:11px 18px;font:inherit;font-weight:600;cursor:pointer}
+  .btn:hover{background:var(--navy2)} .btn:disabled{background:#9aa5b4;cursor:not-allowed}
+  .btn.sec{background:#fff;color:var(--navy);border:1px solid var(--navy)}
+  h2{font-size:1.15rem;margin:0 0 6px} h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px}
+  .muted{color:var(--muted);font-size:.9rem}
+  .tema{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:#fff;margin-bottom:6px}
+  .tema.off{opacity:.5}
+  .tema .num{font-weight:700;color:var(--navy);min-width:62px}
+  .tema .tit{flex:1;font-size:.93rem}
+  .tema .cnt{font-size:.78rem;color:var(--muted);white-space:nowrap}
+  .tema button{padding:7px 12px;font-size:.85rem}
+  .bar{height:6px;background:#e6e2da;border-radius:3px;overflow:hidden;margin:10px 0 16px}
+  .bar>div{height:100%;background:var(--navy);transition:width .25s}
+  .qhead{display:flex;justify-content:space-between;font-size:.85rem;color:var(--muted)}
+  .q{font-size:1.07rem;font-weight:600;margin:10px 0 16px}
+  .opt{display:flex;gap:10px;width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:11px 14px;margin-bottom:8px;font:inherit;cursor:pointer;color:var(--ink)}
+  .opt:hover:not(:disabled){border-color:var(--navy2)}
+  .opt .l{font-weight:700;color:var(--navy);min-width:18px}
+  .opt:disabled{cursor:default}
+  .opt.ok{border-color:var(--ok);background:var(--okbg)} .opt.ko{border-color:var(--ko);background:var(--kobg)}
+  .fb{border-radius:8px;padding:12px 14px;margin-top:6px;font-size:.94rem}
+  .fb.ok{background:var(--okbg);border-left:4px solid var(--ok)} .fb.ko{background:var(--kobg);border-left:4px solid var(--ko)}
+  .fb b.t{display:block;margin-bottom:4px}
+  .art{display:inline-block;margin-top:8px;background:#fff;border:1px solid var(--line);border-radius:5px;padding:3px 8px;font-size:.84rem;font-weight:600;color:var(--navy)}
+  .src{font-size:.75rem;color:var(--muted);margin-top:6px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .score{font-size:2.4rem;font-weight:750;color:var(--navy);margin:4px 0}
+  .rev{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+  .rev .q{font-size:.97rem;margin:0 0 6px}
+  .warn{background:#fff7e0;border:1px solid #edd9a0;border-radius:8px;padding:10px 14px;font-size:.88rem;margin-bottom:14px}
+</style>
+</head>
+<body>
+<header><h1>Test Policía Local · Comunitat Valenciana</h1><button id="home" hidden>Inicio</button></header>
+<main id="app"></main>
+
+<!-- Temario y bancos de preguntas. Para añadir un tema, añade aquí su archivo. -->
+<script src="data/temas.js"></script>
+<script src="data/tema01.js"></script>
+<script src="data/tema13.js"></script>
+<script src="data/tema14.js"></script>
+<script src="data/tema15.js"></script>
+
+<script>
+const N_TEMA = 20, N_GENERAL = 30;
+const app = document.getElementById('app');
+const homeBtn = document.getElementById('home');
+let quiz = null;
+
+const banco = n => (window.BANCO && window.BANCO[n]) || [];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// Barajado de Fisher-Yates: aleatorio y sin sesgo.
+function shuffle(arr){ const a = arr.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+// Prepara una pregunta: baraja las opciones y guarda dónde ha quedado la correcta (o[0] en el banco).
+function preparar(q, tema){
+  const orden = shuffle([0,1,2,3]);
+  return {...q, tema, opciones: orden.map(i => q.o[i]), correcta: orden.indexOf(0)};
+}
+
+function inicio(){
+  quiz = null; homeBtn.hidden = true;
+  const disponibles = TEMAS.filter(t => banco(t.n).length);
+  const total = disponibles.reduce((s,t) => s + banco(t.n).length, 0);
+  let html = `<div class="card"><h2>Test conjunto</h2>
+    <p class="muted">${N_GENERAL} preguntas al azar de todos los temas disponibles (${disponibles.length} ${disponibles.length===1?'tema':'temas'}, ${total} preguntas en el banco).</p>
+    <button class="btn" onclick="empezar('general')" ${total?'':'disabled'}>Empezar test conjunto</button></div>`;
+  if (disponibles.length < 2) html += `<div class="warn">Ahora mismo solo hay un tema con preguntas, así que el test conjunto sale de ese tema. Se irá ampliando conforme se añadan temas.</div>`;
+  let grupo = '';
+  for (const t of TEMAS){
+    if (t.g !== grupo){ grupo = t.g; html += `<h3>Grupo ${esc(grupo)}</h3>`; }
+    const n = banco(t.n).length;
+    html += `<div class="tema ${n?'':'off'}"><span class="num">Tema ${t.n}</span>
+      <span class="tit">${esc(t.t || '—')}</span>
+      <span class="cnt">${n ? n+' preguntas' : 'próximamente'}</span>
+      ${n ? `<button class="btn" onclick="empezar(${t.n})">Test</button>` : ''}</div>`;
+  }
+  app.innerHTML = html;
+}
+
+function empezar(modo){
+  let pool, titulo, cuantas;
+  if (modo === 'general'){
+    pool = TEMAS.flatMap(t => banco(t.n).map(q => [q, t.n]));
+    titulo = 'Test conjunto'; cuantas = N_GENERAL;
+  } else {
+    pool = banco(modo).map(q => [q, modo]);
+    titulo = `Tema ${modo}`; cuantas = N_TEMA;
+  }
+  const preguntas = shuffle(pool).slice(0, Math.min(cuantas, pool.length)).map(([q,t]) => preparar(q,t));
+  quiz = {modo, titulo, preguntas, i:0, respuestas:[]};
+  homeBtn.hidden = false;
+  pintarPregunta();
+}
+
+function pintarPregunta(){
+  const {preguntas, i, titulo} = quiz, q = preguntas[i];
+  const L = 'abcd';
+  app.innerHTML = `<div class="card">
+    <div class="qhead"><span>${esc(titulo)}${quiz.modo==='general' ? ' · Tema '+q.tema : ''}</span><span>${i+1} / ${preguntas.length}</span></div>
+    <div class="bar"><div style="width:${i/preguntas.length*100}%"></div></div>
+    <div class="q">${esc(q.p)}</div>
+    <div id="opts">${q.opciones.map((o,k) => `<button class="opt" onclick="responder(${k})"><span class="l">${L[k]})</span><span>${esc(o)}</span></button>`).join('')}</div>
+    <div id="fb"></div></div>`;
+}
+
+function responder(k){
+  const q = quiz.preguntas[quiz.i], acierto = k === q.correcta, L = 'abcd';
+  quiz.respuestas.push({q, elegida:k, acierto});
+  document.querySelectorAll('.opt').forEach((b,idx) => {
+    b.disabled = true;
+    if (idx === q.correcta) b.classList.add('ok');
+    else if (idx === k) b.classList.add('ko');
+  });
+  const ultima = quiz.i === quiz.preguntas.length - 1;
+  document.getElementById('fb').innerHTML = acierto
+    ? `<div class="fb ok"><b class="t">✓ Correcto</b><span class="art">${esc(q.a)}</span></div>`
+    : `<div class="fb ko"><b class="t">✗ Incorrecto. La respuesta correcta es la ${L[q.correcta]}): ${esc(q.opciones[q.correcta])}</b>
+        ${esc(q.e)}<br><span class="art">📖 Dónde está: ${esc(q.a)}</span><div class="src">Fuente: ${esc(q.f)} · ${esc(q.id)}</div></div>`;
+  document.getElementById('fb').insertAdjacentHTML('beforeend',
+    `<div class="row"><button class="btn" onclick="${ultima ? 'resultado()' : 'siguiente()'}">${ultima ? 'Ver resultado' : 'Siguiente'}</button></div>`);
+}
+
+function siguiente(){ quiz.i++; pintarPregunta(); window.scrollTo(0,0); }
+
+function resultado(){
+  const r = quiz.respuestas, ok = r.filter(x => x.acierto).length, fallos = r.filter(x => !x.acierto), L='abcd';
+  let html = `<div class="card"><h2>${esc(quiz.titulo)} · Resultado</h2>
+    <div class="score">${ok} / ${r.length}</div>
+    <p class="muted">${Math.round(ok/r.length*100)} % de aciertos · ${fallos.length} ${fallos.length===1?'fallo':'fallos'}</p>
+    <div class="row"><button class="btn" onclick="empezar(${JSON.stringify(quiz.modo)})">Repetir con otras preguntas</button>
+    <button class="btn sec" onclick="inicio()">Elegir otro tema</button></div></div>`;
+  if (fallos.length){
+    html += `<div class="card"><h2>Repasa tus fallos</h2>` + fallos.map(({q,elegida}) => `<div class="rev">
+      <div class="q">${esc(q.p)}</div>
+      <div class="muted">Tu respuesta: ${L[elegida]}) ${esc(q.opciones[elegida])}</div>
+      <div class="fb ko"><b class="t">Correcta: ${L[q.correcta]}) ${esc(q.opciones[q.correcta])}</b>${esc(q.e)}<br><span class="art">📖 ${esc(q.a)}</span></div></div>`).join('') + `</div>`;
+  }
+  app.innerHTML = html; window.scrollTo(0,0);
+}
+
+// Sin confirm() (no funciona en todos los navegadores embebidos): doble pulsación para salir de un test.
+let salirPendiente = false;
+homeBtn.onclick = () => {
+  if (!quiz || quiz.i === quiz.preguntas.length || salirPendiente){ salirPendiente = false; homeBtn.textContent = 'Inicio'; inicio(); return; }
+  salirPendiente = true; homeBtn.textContent = '¿Salir? Pulsa otra vez';
+  setTimeout(() => { salirPendiente = false; homeBtn.textContent = 'Inicio'; }, 3000);
+};
+inicio();
+</script>
+</body>
+</html>
